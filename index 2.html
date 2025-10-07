@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fly Swift Tail — Private Flight Search</title>
+<style>
+  :root{
+    --bg:#0b3a8a;
+    --ink:#0b1b2b;
+    --ink-2:#425b75;
+    --card:#ffffff;
+    --accent:#ffc024;
+    --accent-2:#0d62ff;
+    --muted:#eef3f8;
+    --ring:rgba(13,98,255,.35);
+    --shadow:0 8px 24px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; padding-top: env(safe-area-inset-top);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink); background:#f6f8fb;
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    background:var(--bg); color:#fff; padding:16px 20px; position:sticky; top:0; z-index:10;
+  }
+  .brand{display:flex; gap:12px; align-items:center; font-weight:700; letter-spacing:.2px;}
+  .brand .logo{width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:#fff1; border:1px solid #ffffff22}
+  .brand span{font-size:18px}
+  .hero{
+    background:var(--bg); color:#fff; padding:32px 16px 20px;
+  }
+  .hero h1{font-size:36px; line-height:1.1; margin:0 0 8px}
+  .hero p{margin:0; opacity:.9}
+  .wrap{max-width:1120px; margin:0 auto;}
+  .search{
+    background:var(--card); box-shadow:var(--shadow); border-radius:20px; margin-top:16px;
+    padding:10px; border:2px solid var(--accent); 
+  }
+  .trip-types{display:flex; gap:10px; padding:6px 8px 2px; flex-wrap:wrap}
+  .chip{
+    display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+    border:1px solid #e1e8f0; cursor:pointer; user-select:none; background:#fff;
+  }
+  .chip input{accent-color:var(--accent-2)}
+  .filters{
+    display:grid; gap:10px; grid-template-columns: 1fr 40px 1fr 1fr 1fr auto; padding:8px; align-items:stretch;
+  }
+  .field{
+    position:relative; background:var(--muted); border-radius:14px; padding:12px 14px; border:1px solid #e1e8f0;
+    display:flex; gap:10px; align-items:center; min-height:56px;
+  }
+  .field input, .field select{
+    appearance:none; border:none; outline:none; background:transparent; width:100%; font-size:16px; color:var(--ink);
+  }
+  .field small{display:block; font-size:11px; color:var(--ink-2); letter-spacing:.2px}
+  .swap{
+    background:#fff; border:1px solid #e1e8f0; width:40px; height:40px; border-radius:10px; display:grid; place-items:center; cursor:pointer;
+  }
+  .submit{
+    background:var(--accent-2); color:#fff; border:none; padding:0 22px; border-radius:12px; cursor:pointer; font-weight:600; 
+    box-shadow:0 6px 16px rgba(13,98,255,.25); min-height:56px;
+  }
+  .more{
+    display:flex; gap:16px; padding:6px 10px 10px; flex-wrap:wrap; color:var(--ink-2); font-size:14px;
+  }
+  .pill{background:#fff; border:1px solid #e1e8f0; border-radius:999px; padding:6px 10px}
+  .results-hint{padding:18px 0 8px; color:#fff8; font-size:13px}
+  /* Chat */
+  .chat-fab{
+    position:fixed; right:16px; bottom:16px; background:var(--accent-2); color:#fff; width:56px; height:56px; border-radius:50%;
+    display:grid; place-items:center; box-shadow:0 10px 24px rgba(13,98,255,.35); cursor:pointer; z-index:20;
+  }
+  .chat-panel{
+    position:fixed; right:16px; bottom:86px; width:340px; max-width:calc(100vw - 32px);
+    background:#fff; border:1px solid #e1e8f0; border-radius:16px; box-shadow:var(--shadow); display:none; flex-direction:column; overflow:hidden; z-index:20
+  }
+  .chat-head{padding:10px 12px; background:var(--bg); color:#fff; display:flex; justify-content:space-between; align-items:center}
+  .chat-body{padding:12px; display:flex; gap:10px; flex-direction:column; max-height:50vh; overflow:auto}
+  .msg{padding:10px 12px; border-radius:12px; font-size:14px; line-height:1.35; max-width:85%}
+  .msg.ai{background:#f1f5ff; align-self:flex-start}
+  .msg.me{background:#f6f8fb; align-self:flex-end}
+  .chat-foot{display:flex; gap:8px; padding:10px; border-top:1px solid #eef3f8}
+  .chat-foot input{flex:1; border:1px solid #e1e8f0; border-radius:12px; padding:10px}
+  .chat-foot button{background:var(--accent-2); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer}
+  /* Tablet */
+  @media (max-width: 900px){
+    .filters{grid-template-columns: 1fr 40px 1fr 1fr 1fr auto}
+  }
+  /* Phone: stack everything; make button full width; hide swap to avoid crowding */
+  @media (max-width: 540px){
+    .hero{padding:28px 12px 16px}
+    .hero h1{font-size:28px}
+    .search{padding:8px}
+    .filters{grid-template-columns:1fr; padding:6px}
+    .swap{display:none}
+    .submit{width:100%}
+    .field{min-height:52px; padding:10px 12px}
+  }
+  .field:focus-within{outline:3px solid var(--ring)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap brand">
+      <div class="logo" aria-hidden="true">✈️</div>
+      <span>Fly Swift Tail</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <h1>Compare and book private flights with ease</h1>
+      <p>Fast quotes from operators & charter brokers. Empty-leg friendly. Concierge-ready.</p>
+
+      <div class="search" role="search" aria-label="Private flight search">
+        <div class="trip-types" aria-label="Trip type">
+          <label class="chip"><input type="radio" name="trip" value="round" checked /> Round-trip</label>
+          <label class="chip"><input type="radio" name="trip" value="oneway" /> One-way</label>
+          <label class="chip"><input type="radio" name="trip" value="multicity" /> Multi-leg</label>
+          <label class="chip"><input type="checkbox" id="nonstop" /> Direct flights only</label>
+          <label class="chip"><input type="checkbox" id="emptyleg" /> Open to empty-legs</label>
+        </div>
+
+        <div class="filters">
+          <div class="field">
+            <div aria-hidden="true">🛫</div>
+            <div style="width:100%">
+              <small>Leaving from (City, Airport, or FBO)</small>
+              <input id="from" placeholder="New York — Teterboro (TEB) • Signature" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="swap" id="swap" title="Swap origin/destination" aria-label="Swap origin and destination">⇄</div>
+
+          <div class="field">
+            <div aria-hidden="true">🛬</div>
+            <div style="width:100%">
+              <small>Going to (City, Airport, or FBO)</small>
+              <input id="to" placeholder="Miami — Opa-locka (OPF) • Atlantic" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="field">
+            <div aria-hidden="true">📅</div>
+            <div style="width:100%">
+              <small>Depart</small>
+              <input id="depart" type="date" />
+            </div>
+          </div>
+
+          <div class="field" id="returnField">
+            <div aria-hidden="true">📅</div>
+            <div style="width:100%">
+              <small>Return</small>
+              <input id="return" type="date" />
+            </div>
+          </div>
+
+          <button class="submit" id="searchBtn">Search availability</button>
+        </div>
+
+        <div class="more">
+          <label class="pill"><input type="checkbox" id="flexDays" style="margin-right:8px; accent-color:var(--accent-2)" /> Flexible dates (±1 day)</label>
+          <label class="pill"><input type="checkbox" id="flexTime" style="margin-right:8px; accent-color:var(--accent-2)" /> Flexible departure (±3 hrs)</label>
+
+          <span class="pill">
+            <label for="pax" style="margin-right:6px;">Travellers</label>
+            <select id="pax">
+              <option>1 adult</option>
+              <option>2 adults</option>
+              <option>3 adults</option>
+              <option>4 adults</option>
+              <option>5 adults</option>
+              <option>6 adults</option>
+              <option>7+ group</option>
+            </select>
+          </span>
+
+          <span class="pill">
+            <label for="aircraft" style="margin-right:6px;">Aircraft</label>
+            <select id="aircraft">
+              <option>Any class</option>
+              <option>Helicopter</option>
+              <option>Turboprop</option>
+              <option>Very Light Jet (VLJ)</option>
+              <option>Light Jet</option>
+              <option>Midsize Jet</option>
+              <option>Super-Mid Jet</option>
+              <option>Heavy Jet</option>
+              <option>Ultra-long Range</option>
+            </select>
+          </span>
+
+          <span class="pill">
+            <label for="baggage" style="margin-right:6px;">Baggage</label>
+            <select id="baggage">
+              <option>Standard (carry-ons)</option>
+              <option>Golf clubs</option>
+              <option>Ski gear</option>
+              <option>Oversize/odd</option>
+            </select>
+          </span>
+
+          <span class="pill">
+            <label for="pets" style="margin-right:6px;">Pets</label>
+            <select id="pets">
+              <option>No pets</option>
+              <option>Pet on board</option>
+            </select>
+          </span>
+        </div>
+      </div>
+
+      <div class="results-hint">Demo only — pressing “Search availability” won’t call an API.</div>
+    </div>
+  </section>
+
+  <main class="wrap" style="padding:22px 16px 80px">
+    <h2 style="margin:0 0 8px">Why operators & brokers will love this</h2>
+    <ul style="margin:6px 0 0 18px; color:var(--ink-2); line-height:1.65">
+      <li>Mobile-first layout stacks fields and uses native pickers.</li>
+      <li>Filters for aircraft class, date/time flexibility, direct-only, empty-legs.</li>
+      <li>Simple, familiar UX that converts.</li>
+    </ul>
+  </main>
+
+  <div class="chat-fab" id="chatFab" title="Chat with FST AI">💬</div>
+  <div class="chat-panel" id="chatPanel" aria-live="polite">
+    <div class="chat-head">
+      <strong>FST — AI Flight Assistant</strong>
+      <button style="background:transparent;border:0;color:#fff;cursor:pointer" id="chatClose">✕</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="msg ai">Hi! I can help pick an aircraft and FBO, or find an empty-leg that fits your route.</div>
+    </div>
+    <div class="chat-foot">
+      <input id="chatInput" placeholder="Ask about aircraft, FBOs, or empty legs…" />
+      <button id="chatSend">Send</button>
+    </div>
+  </div>
+
+<script>
+  const q = (s)=>document.querySelector(s);
+  const tripRadios = document.getElementsByName('trip');
+  const returnField = q('#returnField');
+
+  function syncTripUI(){
+    const val = [...tripRadios].find(r=>r.checked)?.value;
+    returnField.style.display = (val === 'round') ? 'flex' : 'none';
+  }
+  [...tripRadios].forEach(r=>r.addEventListener('change', syncTripUI));
+  syncTripUI();
+
+  q('#swap').addEventListener('click', ()=>{
+    const from = q('#from'), to = q('#to');
+    [from.value, to.value] = [to.value, from.value];
+    from.focus();
+  });
+
+  q('#searchBtn').addEventListener('click', ()=>{
+    alert('Demo mode: this button would fetch quotes from operators/brokers.\n\nYour filters will be passed as query params in the real build.');
+  });
+
+  const chatFab = q('#chatFab'), chatPanel = q('#chatPanel'), chatBody = q('#chatBody');
+  chatFab.addEventListener('click', ()=> chatPanel.style.display = 'flex');
+  q('#chatClose').addEventListener('click', ()=> chatPanel.style.display = 'none');
+  q('#chatSend').addEventListener('click', sendChat);
+  q('#chatInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendChat(); });
+
+  function sendChat(){
+    const input = q('#chatInput');
+    const text = input.value.trim();
+    if(!text) return;
+    addMsg(text, 'me');
+    input.value='';
+    setTimeout(()=>{
+      addMsg("For that route, a Midsize Jet from TEB to OPF is ~2h45m. Prefer direct? I can include empty-leg matches where applicable.", 'ai');
+    }, 450);
+  }
+  function addMsg(t, who){
+    const el = document.createElement('div'); el.className='msg '+who; el.textContent=t; chatBody.appendChild(el);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+</script>
+</body>
+</html>
